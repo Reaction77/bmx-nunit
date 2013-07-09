@@ -23,7 +23,6 @@ namespace Inedo.BuildMasterExtensions.NUnit
         /// </summary>
         public NUnitActionEditor()
         {
-            this.ValidateBeforeCreate += this.NUnitActionEditor_ValidateBeforeCreate;
         }
 
         /// <summary>
@@ -34,30 +33,10 @@ namespace Inedo.BuildMasterExtensions.NUnit
         /// </value>
         public override bool DisplaySourceDirectory { get { return true; } }
 
-        /// <summary>
-        /// Handles the ValidateBeforeCreate event of the NUnitActionEditor control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="Inedo.BuildMaster.Web.Controls.Extensions.ValidationEventArgs&lt;Inedo.BuildMaster.Extensibility.Actions.ActionBase&gt;"/> instance containing the event data.</param>
-        private void NUnitActionEditor_ValidateBeforeCreate(object sender, ValidationEventArgs<ActionBase> e)
-        {
-            if (this.DeployableId == 0)
-            {
-                e.ValidLevel = ValidationLevels.Error;
-                e.Message =
-                    "In order to create a unit testing action, you must use an action group " +
-                    "that has a default deployable selected.  To do so, return to the Deployment " +
-                    "Plans section and choose \"Create New Action Group,\" and select a default " +
-                    "deployable for the new group.";
-                return;
-            }
-
-            e.ValidLevel = ValidationLevels.Valid;
-        }
-
         protected override void CreateChildControls()
         {
-            var deployable = StoredProcs
+            Tables.Deployables_Extended deployable = null;
+            if (this.DeployableId > 0) deployable = StoredProcs
                 .Applications_GetDeployable(this.DeployableId)
                 .Execute()
                 .FirstOrDefault();
