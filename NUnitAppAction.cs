@@ -17,8 +17,6 @@ namespace Inedo.BuildMasterExtensions.NUnit
         "Runs NUnit unit tests on a specified project, assembly, or NUnit file.",
         "Testing")]
     [CustomEditor(typeof(NUnitActionEditor))]
-    [RequiresInterface(typeof(IRemoteProcessExecuter))]
-    [RequiresInterface(typeof(IFileOperationsExecuter))]
     public sealed class NUnitAppAction : UnitTestActionBase
     {
         /// <summary>
@@ -76,20 +74,20 @@ namespace Inedo.BuildMasterExtensions.NUnit
         {
             var doc = new XmlDocument();
 
-            using (var agent = Util.Agents.CreateAgentFromId(this.ServerId))
+            var agent = this.Context.Agent;
             {
                 var fileOps = (IFileOperationsExecuter)agent;
-                var nunitPath = fileOps.GetWorkingDirectory(this.Context.ApplicationId, this.Context.DeployableId, this.ExePath);
+                var nunitPath = fileOps.GetWorkingDirectory(this.Context.ApplicationId, this.Context.DeployableId ?? 0, this.ExePath);
 
-                var tmpFileName = fileOps.CombinePath(this.RemoteConfiguration.TempDirectory, Guid.NewGuid().ToString() + ".xml");
+                var tmpFileName = fileOps.CombinePath(this.Context.TempDirectory, Guid.NewGuid().ToString() + ".xml");
 
                 this.ExecuteCommandLine(
                     nunitPath,
                     string.Format("\"{0}\" /xml:\"{1}\" {2}", this.TestFile, tmpFileName, this.AdditionalArguments),
-                    this.RemoteConfiguration.SourceDirectory
+                    this.Context.SourceDirectory
                 );
 
-                using (var stream = new MemoryStream(fileOps.ReadAllFileBytes(tmpFileName), false))
+                using (var stream = new MemoryStream(fileOps.ReadFileBytes(tmpFileName), false))
                 {
                     doc.Load(stream);
                 }
