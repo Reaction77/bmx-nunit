@@ -76,7 +76,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
 
             var agent = this.Context.Agent;
             {
-                var fileOps = (IFileOperationsExecuter)agent;
+                var fileOps = agent.GetService<IFileOperationsExecuter>();
                 var nunitPath = fileOps.GetWorkingDirectory(this.Context.ApplicationId, this.Context.DeployableId ?? 0, this.ExePath);
 
                 var tmpFileName = fileOps.CombinePath(this.Context.TempDirectory, Guid.NewGuid().ToString() + ".xml");
