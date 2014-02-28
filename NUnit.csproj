@@ -89,6 +89,7 @@
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="NUnitAppAction.cs" />
+    <Compile Include="NUnitConfigurer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

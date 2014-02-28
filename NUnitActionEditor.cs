@@ -45,9 +45,9 @@ namespace Inedo.BuildMasterExtensions.NUnit
 
             this.txtExePath = new SourceControlFileFolderPicker
             {
-                Required = true,
                 DisplayMode = SourceControlBrowser.DisplayModes.FoldersAndFiles,
-                ServerId = this.ServerId
+                ServerId = this.ServerId,
+                DefaultText = "Default for Selected Configuration"
             };
 
             this.txtGroupName = new ValidatingTextBox
@@ -90,8 +90,9 @@ namespace Inedo.BuildMasterExtensions.NUnit
 
             this.Controls.Add(
                 new FormFieldGroup(
-                    "NUnit Executable Path", 
-                    "The path to (and including) nunit-console.exe.", 
+                    "Custom NUnit Executable Path", 
+                    "The path to (and including) nunit-console.exe if using a different version of NUnit than the one specified "
+                        +"in the NUnit extension configuration.", 
                     false, 
                     new StandardFormField("NUnit Exe Path:", this.txtExePath)
                 ),

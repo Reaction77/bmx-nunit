@@ -91,12 +91,12 @@ namespace Inedo.BuildMasterExtensions.NUnit
             var agent = this.Context.Agent;
             {
                 var fileOps = agent.GetService<IFileOperationsExecuter>();
-                var nunitPath = fileOps.GetWorkingDirectory(this.Context.ApplicationId, this.Context.DeployableId ?? 0, this.ExePath);
 
-                var tmpFileName = this.GetXmlOutputPath(fileOps);
+                string nunitExePath = this.GetNUnitExePath(fileOps);
+                string tmpFileName = this.GetXmlOutputPath(fileOps);
 
                 this.ExecuteCommandLine(
-                    nunitPath,
+                    nunitExePath,
                     string.Format("\"{0}\" /xml:\"{1}\" {2}", this.TestFile, tmpFileName, this.AdditionalArguments),
                     this.Context.SourceDirectory
                 );
@@ -142,6 +142,18 @@ namespace Inedo.BuildMasterExtensions.NUnit
 
                 testStart = testStart.AddSeconds(testLength);
             }
+        }
+
+        private string GetNUnitExePath(IFileOperationsExecuter fileOps)
+        {
+            if (!string.IsNullOrWhiteSpace(this.ExePath))
+                return fileOps.GetWorkingDirectory(this.Context.ApplicationId, this.Context.DeployableId ?? 0, this.ExePath);
+
+            var configurer = (NUnitConfigurer)this.GetExtensionConfigurer();
+            if (string.IsNullOrWhiteSpace(configurer.NUnitConsoleExePath))
+                throw new InvalidOperationException("The path to NUnit was not specified in either the action or the selected NUnit extension's configuration.");
+
+            return fileOps.GetWorkingDirectory(this.Context.ApplicationId, this.Context.DeployableId ?? 0, configurer.NUnitConsoleExePath);
         }
 
         private string GetXmlOutputPath(IFileOperationsExecuter fileOps)
