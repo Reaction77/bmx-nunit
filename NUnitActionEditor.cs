@@ -17,6 +17,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
         private ValidatingTextBox txtTestFile, txtGroupName;
         private DropDownList ddlFrameworkVersion;
         private ValidatingTextBox txtAdditionalArguments;
+        private ValidatingTextBox txtCustomXmlOutputPath;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NUnitActionEditor"/> class.
@@ -73,6 +74,13 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 Width = 300
             };
 
+            this.txtCustomXmlOutputPath = new ValidatingTextBox
+            {
+                Required = false,
+                Width = 300,
+                DefaultText = "Managed by BuildMaster"
+            };
+
             this.Controls.Add(
                 new FormFieldGroup(
                     "NUnit Executable Path", 
@@ -91,6 +99,12 @@ namespace Inedo.BuildMasterExtensions.NUnit
                     "The path relative to the source directory of the DLL, project file, or NUnit file to test against.", 
                     false, 
                     new StandardFormField("Test File:", this.txtTestFile)
+                ),
+                new FormFieldGroup(
+                    "Custom XML Output Path",
+                    "The path relative to the source directory of the NUnit-generated XML output file.",
+                    false,
+                    new StandardFormField("XML Output Path:", this.txtCustomXmlOutputPath)
                 ),
                 new FormFieldGroup(
                     "Group Name", 
@@ -116,6 +130,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
             this.txtGroupName.Text = nunitAction.GroupName;
             this.ddlFrameworkVersion.SelectedValue = nunitAction.FrameworkVersion ?? "";
             this.txtAdditionalArguments.Text = nunitAction.AdditionalArguments;
+            this.txtCustomXmlOutputPath.Text = nunitAction.CustomXmlOutputPath;
         }
 
         public override ActionBase CreateFromForm()
@@ -126,7 +141,8 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 TestFile = this.txtTestFile.Text,
                 GroupName = this.txtGroupName.Text,
                 FrameworkVersion = this.ddlFrameworkVersion.SelectedValue,
-                AdditionalArguments = this.txtAdditionalArguments.Text
+                AdditionalArguments = this.txtAdditionalArguments.Text,
+                CustomXmlOutputPath = this.txtCustomXmlOutputPath.Text
             };
         }
     }
