@@ -14,9 +14,10 @@ namespace Inedo.BuildMasterExtensions.NUnit
     /// </summary>
     [ActionProperties(
         "Execute NUnit Tests",
-        "Runs NUnit unit tests on a specified project, assembly, or NUnit file.",
-        "Testing")]
+        "Runs NUnit unit tests on a specified project, assembly, or NUnit file.")]
+    [Tag(Tags.UnitTests)]
     [CustomEditor(typeof(NUnitActionEditor))]
+    [RequiresInterface(typeof(IFileOperationsExecuter))]
     public sealed class NUnitAppAction : UnitTestActionBase
     {
         /// <summary>
