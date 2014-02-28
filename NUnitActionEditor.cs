@@ -18,6 +18,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
         private DropDownList ddlFrameworkVersion;
         private ValidatingTextBox txtAdditionalArguments;
         private ValidatingTextBox txtCustomXmlOutputPath;
+        private CheckBox chkTreatInconclusiveTestsAsFailure;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NUnitActionEditor"/> class.
@@ -81,6 +82,12 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 DefaultText = "Managed by BuildMaster"
             };
 
+            this.chkTreatInconclusiveTestsAsFailure = new CheckBox
+            {
+                Text = "Treat Inconclusive Tests as Failures",
+                Checked = true
+            };
+
             this.Controls.Add(
                 new FormFieldGroup(
                     "NUnit Executable Path", 
@@ -107,6 +114,12 @@ namespace Inedo.BuildMasterExtensions.NUnit
                     new StandardFormField("XML Output Path:", this.txtCustomXmlOutputPath)
                 ),
                 new FormFieldGroup(
+                    "NUnit Options",
+                    "Specify any additional options for NUnit here.",
+                    false,
+                    new StandardFormField("", this.chkTreatInconclusiveTestsAsFailure)
+                ),
+                new FormFieldGroup(
                     "Group Name", 
                     "The Group name allows you to easily identify the unit test.", 
                     false, 
@@ -131,6 +144,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
             this.ddlFrameworkVersion.SelectedValue = nunitAction.FrameworkVersion ?? "";
             this.txtAdditionalArguments.Text = nunitAction.AdditionalArguments;
             this.txtCustomXmlOutputPath.Text = nunitAction.CustomXmlOutputPath;
+            this.chkTreatInconclusiveTestsAsFailure.Checked = nunitAction.TreatInconclusiveAsFailure;
         }
 
         public override ActionBase CreateFromForm()
@@ -142,7 +156,8 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 GroupName = this.txtGroupName.Text,
                 FrameworkVersion = this.ddlFrameworkVersion.SelectedValue,
                 AdditionalArguments = this.txtAdditionalArguments.Text,
-                CustomXmlOutputPath = this.txtCustomXmlOutputPath.Text
+                CustomXmlOutputPath = this.txtCustomXmlOutputPath.Text,
+                TreatInconclusiveAsFailure = this.chkTreatInconclusiveTestsAsFailure.Checked
             };
         }
     }

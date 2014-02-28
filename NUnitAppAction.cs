@@ -25,6 +25,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
         /// </summary>
         public NUnitAppAction()
         {
+            this.TreatInconclusiveAsFailure = true;
         }
 
         /// <summary>
@@ -56,6 +57,12 @@ namespace Inedo.BuildMasterExtensions.NUnit
         /// </summary>
         [Persistent]
         public string CustomXmlOutputPath { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to treat inconclusive tests as failures.
+        /// </summary>
+        [Persistent]
+        public bool TreatInconclusiveAsFailure { get; set; }
 
         /// <summary>
         /// Returns a <see cref="System.String" /> that represents this instance.
@@ -114,8 +121,9 @@ namespace Inedo.BuildMasterExtensions.NUnit
                     LogInformation(String.Format("NUnit Test: {0} (skipped)", testName));
                     continue;
                 }
-                
-                bool nodeResult = node.Attributes["success"].Value.Equals("True", StringComparison.OrdinalIgnoreCase);
+
+                bool nodeResult = node.Attributes["success"].Value.Equals("True", StringComparison.OrdinalIgnoreCase) || 
+                    (!this.TreatInconclusiveAsFailure && node.Attributes["result"].Value.Equals("inconclusive", StringComparison.OrdinalIgnoreCase));
 
                 double testLength = double.Parse(node.Attributes["time"].Value);
 
