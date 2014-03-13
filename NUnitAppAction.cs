@@ -125,7 +125,12 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 bool nodeResult = node.Attributes["success"].Value.Equals("True", StringComparison.OrdinalIgnoreCase) || 
                     (!this.TreatInconclusiveAsFailure && node.Attributes["result"].Value.Equals("inconclusive", StringComparison.OrdinalIgnoreCase));
 
-                double testLength = double.Parse(node.Attributes["time"].Value);
+                var numberStyles = NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite | NumberStyles.AllowLeadingSign |NumberStyles.AllowDecimalPoint | NumberStyles.AllowThousands | NumberStyles.AllowExponent; 
+                double testLength = 0;
+                if (!double.TryParse(node.Attributes["time"].Value, numberStyles, CultureInfo.InvariantCulture, out testLength))
+                {
+                    this.LogWarning("Error parsing " + node.Attributes["time"].Value + " as a number.");
+                };
 
                 this.LogInformation(string.Format("NUnit Test: {0}, Result: {1}, Test Length: {2} secs",
                     testName,
