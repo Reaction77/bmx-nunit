@@ -9,9 +9,6 @@ using Inedo.Web.Controls;
 
 namespace Inedo.BuildMasterExtensions.NUnit
 {
-    /// <summary>
-    /// Custom editor for the NUnit action.
-    /// </summary>
     internal sealed class NUnitActionEditor : ActionEditorBase
     {
         private SourceControlFileFolderPicker txtExePath;
@@ -21,20 +18,10 @@ namespace Inedo.BuildMasterExtensions.NUnit
         private ValidatingTextBox txtCustomXmlOutputPath;
         private CheckBox chkTreatInconclusiveTestsAsFailure;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="NUnitActionEditor"/> class.
-        /// </summary>
-        public NUnitActionEditor()
+        public override bool DisplaySourceDirectory
         {
+            get { return true; }
         }
-
-        /// <summary>
-        /// Gets a value indicating whether a textbox to edit the source directory should be displayed.
-        /// </summary>
-        /// <value>
-        /// 	<c>true</c> if a textbox to edit the source directory should be displayed; otherwise, <c>false</c>.
-        /// </value>
-        public override bool DisplaySourceDirectory { get { return true; } }
 
         protected override void CreateChildControls()
         {

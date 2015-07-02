@@ -21,9 +21,6 @@ namespace Inedo.BuildMasterExtensions.NUnit
     [RequiresInterface(typeof(IFileOperationsExecuter))]
     public sealed class NUnitAppAction : UnitTestActionBase
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="NUnitAppAction"/> class.
-        /// </summary>
         public NUnitAppAction()
         {
             this.TreatInconclusiveAsFailure = true;
