@@ -1,5 +1,4 @@
 ﻿using System.Linq;
-using System.Globalization;
 using System.Web.UI.WebControls;
 using Inedo.BuildMaster.Data;
 using Inedo.BuildMaster.Extensibility.Actions;
@@ -26,100 +25,74 @@ namespace Inedo.BuildMasterExtensions.NUnit
         protected override void CreateChildControls()
         {
             Tables.Deployables_Extended deployable = null;
-            if (this.DeployableId > 0) deployable = StoredProcs
-                .Applications_GetDeployable(this.DeployableId)
-                .Execute()
-                .FirstOrDefault();
+            if (this.DeployableId > 0)
+            {
+                deployable = StoredProcs.Applications_GetDeployable(this.DeployableId)
+                   .Execute()
+                   .FirstOrDefault();
+            }
 
             this.txtExePath = new SourceControlFileFolderPicker
             {
                 DisplayMode = SourceControlBrowser.DisplayModes.FoldersAndFiles,
                 ServerId = this.ServerId,
-                DefaultText = "Default for Selected Configuration"
+                DefaultText = "default for selected configuration"
             };
 
             this.txtGroupName = new ValidatingTextBox
             {
                 Text = deployable != null ? deployable.Deployable_Name : string.Empty,
-                Width= 300,
                 Required = true
             };
 
             this.txtTestFile = new ValidatingTextBox
             {
-                Required = true,
-                Width = 300
+                Required = true
             };
 
-            this.ddlFrameworkVersion = new DropDownList();
-            this.ddlFrameworkVersion.Items.Add(new ListItem("2.0.50727", "2.0.50727"));
-            this.ddlFrameworkVersion.Items.Add(new ListItem("4.0.30319", "4.0.30319"));
-            this.ddlFrameworkVersion.Items.Add(new ListItem("unspecified", ""));
-            this.ddlFrameworkVersion.SelectedValue = "";
+            this.ddlFrameworkVersion = new DropDownList
+            {
+                Items =
+                {
+                    new ListItem("2.0.50727", "2.0.50727"),
+                    new ListItem("4.0.30319", "4.0.30319"),
+                    new ListItem("default", string.Empty)
+                }
+            };
+
+            this.ddlFrameworkVersion.SelectedValue = string.Empty;
 
             this.txtAdditionalArguments = new ValidatingTextBox
             {
-                Required = false,
-                Width = 300
+                DefaultText = "none"
             };
 
             this.txtCustomXmlOutputPath = new ValidatingTextBox
             {
-                Required = false,
-                Width = 300,
-                DefaultText = "Managed by BuildMaster"
+                DefaultText = "managed by BuildMaster"
             };
 
             this.chkTreatInconclusiveTestsAsFailure = new CheckBox
             {
-                Text = "Treat Inconclusive Tests as Failures",
+                Text = "Treat inconclusive tests as failures",
                 Checked = true
             };
 
             this.Controls.Add(
-                new FormFieldGroup(
-                    "Custom NUnit Executable Path", 
-                    "The path to (and including) nunit-console.exe if using a different version of NUnit than the one specified "
-                        +"in the NUnit extension configuration.", 
-                    false, 
-                    new StandardFormField("NUnit Exe Path:", this.txtExePath)
-                ),
-                new FormFieldGroup(
-                    ".NET Framework Version",
-                    "The version of .NET which will host the unit test runner.",
-                    false,
-                    new StandardFormField(".NET Framework Version:", this.ddlFrameworkVersion)
-                ),
-                new FormFieldGroup(
-                    "Test File", 
-                    "The path relative to the source directory of the DLL, project file, or NUnit file to test against.", 
-                    false, 
-                    new StandardFormField("Test File:", this.txtTestFile)
-                ),
-                new FormFieldGroup(
-                    "Custom XML Output Path",
-                    "The path relative to the source directory of the NUnit-generated XML output file.",
-                    false,
-                    new StandardFormField("XML Output Path:", this.txtCustomXmlOutputPath)
-                ),
-                new FormFieldGroup(
-                    "NUnit Options",
-                    "Specify any additional options for NUnit here.",
-                    false,
-                    new StandardFormField("", this.chkTreatInconclusiveTestsAsFailure)
-                ),
-                new FormFieldGroup(
-                    "Group Name", 
-                    "The Group name allows you to easily identify the unit test.", 
-                    false, 
-                    new StandardFormField("Group Name:", this.txtGroupName)
-                ),
-                new FormFieldGroup(
-                    "Additional Arguments",
-                    "The additional arguments to pass to the NUnit executable.",
-                    true,
-                    new StandardFormField("Additional Arguments:", this.txtAdditionalArguments)
-                )
+                new SlimFormField("Unit test group:", this.txtGroupName),
+                new SlimFormField("NUnit-console.exe path:", this.txtExePath)
+                {
+                    HelpText = "The path to (and including) nunit-console.exe if using a different version of NUnit than the one specified "
+                             + "in the NUnit extension configuration."
+                },
+                new SlimFormField("CLR version:", this.ddlFrameworkVersion),
+                new SlimFormField("Test file:", this.txtTestFile)
+                {
+                    HelpText = "This should normally be a .dll or project file."
+                },
+                new SlimFormField("XML output path:", this.txtCustomXmlOutputPath),
+                new SlimFormField("Additional NUnit arguments:", this.txtAdditionalArguments),
+                new SlimFormField("Options:", this.chkTreatInconclusiveTestsAsFailure)
             );
         }
 
