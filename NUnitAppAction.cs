@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Xml;
+using System.Xml.Linq;
 using Inedo.BuildMaster;
 using Inedo.BuildMaster.Extensibility.Actions;
 using Inedo.BuildMaster.Extensibility.Actions.Testing;
@@ -10,9 +11,6 @@ using Inedo.BuildMaster.Web;
 
 namespace Inedo.BuildMasterExtensions.NUnit
 {
-    /// <summary>
-    /// Action that runs NUnit unit tests on a specified project, assembly, or NUnit file.
-    /// </summary>
     [ActionProperties(
         "Execute NUnit Tests",
         "Runs NUnit unit tests on a specified project, assembly, or NUnit file.")]
@@ -62,19 +60,24 @@ namespace Inedo.BuildMasterExtensions.NUnit
         [Persistent]
         public bool TreatInconclusiveAsFailure { get; set; }
 
-        /// <summary>
-        /// Returns a <see cref="System.String" /> that represents this instance.
-        /// </summary>
-        /// <returns>
-        /// A <see cref="System.String" /> that represents this instance.
-        /// </returns>
-        /// <remarks>
-        /// This should return a user-friendly string describing what the Action does
-        /// and the state of its important persistent properties.
-        /// </remarks>
-        public override string ToString()
+        public override ActionDescription GetActionDescription()
         {
-            return string.Format("Run NUnit Unit Tests on {0}{1}", this.TestFile, Util.ConcatNE(" with the additional arguments: ", this.AdditionalArguments));
+            var longActionDescription = new LongActionDescription();
+            if (!string.IsNullOrWhiteSpace(this.AdditionalArguments))
+            {
+                longActionDescription.AppendContent(
+                    "with additional arguments: ",
+                    new Hilite(this.AdditionalArguments)
+                );
+            }
+
+            return new ActionDescription(
+                new ShortActionDescription(
+                    "Run NUnit on ",
+                    new DirectoryHilite(this.OverriddenSourceDirectory, this.TestFile)
+                ),
+                longActionDescription
+            );
         }
 
         /// <summary>
@@ -84,66 +87,61 @@ namespace Inedo.BuildMasterExtensions.NUnit
         /// </summary>
         protected override void RunTests()
         {
-            var doc = new XmlDocument();
+            var fileOps = this.Context.Agent.GetService<IFileOperationsExecuter>();
 
-            var agent = this.Context.Agent;
+            var nunitExePath = this.GetNUnitExePath(fileOps);
+            var tmpFileName = this.GetXmlOutputPath(fileOps);
+
+            var startTime = DateTime.UtcNow;
+
+            this.ExecuteCommandLine(
+                nunitExePath,
+                string.Format("\"{0}\" /xml:\"{1}\" {2}", this.TestFile, tmpFileName, this.AdditionalArguments),
+                this.Context.SourceDirectory
+            );
+
+            XDocument xdoc;
+            using (var stream = fileOps.OpenFile(tmpFileName, FileMode.Open, FileAccess.Read))
             {
-                var fileOps = agent.GetService<IFileOperationsExecuter>();
-
-                string nunitExePath = this.GetNUnitExePath(fileOps);
-                string tmpFileName = this.GetXmlOutputPath(fileOps);
-
-                this.ExecuteCommandLine(
-                    nunitExePath,
-                    string.Format("\"{0}\" /xml:\"{1}\" {2}", this.TestFile, tmpFileName, this.AdditionalArguments),
-                    this.Context.SourceDirectory
-                );
-
-                using (var stream = new MemoryStream(fileOps.ReadFileBytes(tmpFileName), false))
-                {
-                    doc.Load(stream);
-                }
+                xdoc = XDocument.Load(stream);
             }
 
-            var testStart = DateTime.Parse(doc.SelectSingleNode("//test-results").Attributes["time"].Value);
+            var testResultsElement = xdoc.Element("test-results");
 
-            var nodeList = doc.SelectNodes("//test-case");
+            startTime = this.TryParseStartTime((string)testResultsElement.Attribute("date"), (string)testResultsElement.Attribute("time")) ?? startTime;
 
-            foreach (XmlNode node in nodeList)
+            foreach (var testCaseElement in xdoc.Descendants("test-case"))
             {
-                string testName = node.Attributes["name"].Value;
+                var testName = (string)testCaseElement.Attribute("name");
 
                 // skip tests that weren't actually run
-                if (string.Equals(node.Attributes["executed"].Value, "false", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals((string)testCaseElement.Attribute("executed"), "False", StringComparison.OrdinalIgnoreCase))
                 {
-                    LogInformation(String.Format("NUnit Test: {0} (skipped)", testName));
+                    this.LogInformation("NUnit test: {0} (skipped)", testName);
                     continue;
                 }
 
-                bool nodeResult = node.Attributes["success"].Value.Equals("True", StringComparison.OrdinalIgnoreCase) || 
-                    (!this.TreatInconclusiveAsFailure && node.Attributes["result"].Value.Equals("inconclusive", StringComparison.OrdinalIgnoreCase));
+                bool nodeResult = string.Equals((string)testCaseElement.Attribute("success"), "True", StringComparison.OrdinalIgnoreCase)
+                    || (!this.TreatInconclusiveAsFailure && string.Equals((string)testCaseElement.Attribute("result"), "Inconclusive", StringComparison.OrdinalIgnoreCase));
 
-                var numberStyles = NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite | NumberStyles.AllowLeadingSign |NumberStyles.AllowDecimalPoint | NumberStyles.AllowThousands | NumberStyles.AllowExponent; 
-                double testLength = 0;
-                if (!double.TryParse(node.Attributes["time"].Value, numberStyles, CultureInfo.InvariantCulture, out testLength))
-                {
-                    this.LogWarning("Error parsing " + node.Attributes["time"].Value + " as a number.");
-                };
+                var testDuration = this.TryParseTestTime((string)testCaseElement.Attribute("time"));
 
-                this.LogInformation(string.Format("NUnit Test: {0}, Result: {1}, Test Length: {2} secs",
+                this.LogInformation(
+                    "NUnit Test: {0}, Result: {1}, Test Length: {2}",
                     testName,
                     nodeResult,
-                    testLength));
+                    testDuration
+                );
 
                 this.RecordResult(
                     testName,
                     nodeResult,
-                    node.OuterXml,
-                    testStart,
-                    testStart.AddSeconds(testLength)
+                    testCaseElement.ToString(),
+                    startTime,
+                    startTime + testDuration
                 );
 
-                testStart = testStart.AddSeconds(testLength);
+                startTime += testDuration;
             }
         }
 
@@ -165,6 +163,59 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 return fileOps.CombinePath(this.Context.TempDirectory, Guid.NewGuid().ToString() + ".xml");
 
             return fileOps.CombinePath(this.Context.SourceDirectory, this.CustomXmlOutputPath);
+        }
+
+        private DateTime? TryParseStartTime(string date, string time)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(date))
+                {
+                    DateTime result;
+                    if (DateTime.TryParse(time, out result))
+                        return result.ToUniversalTime();
+                }
+
+                if (!string.IsNullOrWhiteSpace(date) && !string.IsNullOrWhiteSpace(time))
+                {
+                    var dateParts = date.Split('-');
+                    var timeParts = time.Split(':');
+
+                    return new DateTime(
+                        year: int.Parse(dateParts[0]),
+                        month: int.Parse(dateParts[1]),
+                        day: int.Parse(dateParts[2]),
+                        hour: int.Parse(timeParts[0]),
+                        minute: int.Parse(timeParts[1]),
+                        second: int.Parse(timeParts[2])
+                    ).ToUniversalTime();
+                }
+            }
+            catch
+            {
+            }
+
+            this.LogWarning("Unable to parse start time; using current time instead.");
+            return null;
+        }
+        private TimeSpan TryParseTestTime(string time)
+        {
+            if (string.IsNullOrWhiteSpace(time))
+                return TimeSpan.Zero;
+
+            var mungedTime = time.Replace(',', '.');
+            double doubleTime;
+            bool parsed = double.TryParse(
+                mungedTime,
+                NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite | NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowThousands | NumberStyles.AllowExponent,
+                CultureInfo.InvariantCulture,
+                out doubleTime
+            );
+
+            if (!parsed)
+                this.LogWarning("Could not parse {0} as a time in seconds.", time);
+
+            return TimeSpan.FromSeconds(doubleTime);
         }
     }
 }
