@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Xml.Linq;
@@ -7,22 +8,19 @@ using Inedo.BuildMaster.Extensibility.Actions;
 using Inedo.BuildMaster.Extensibility.Actions.Testing;
 using Inedo.BuildMaster.Extensibility.Agents;
 using Inedo.BuildMaster.Web;
+using Inedo.Documentation;
+using Inedo.Serialization;
 
 namespace Inedo.BuildMasterExtensions.NUnit
 {
-    [ActionProperties(
-        "Execute NUnit Tests",
-        "Runs NUnit unit tests on a specified project, assembly, or NUnit file.")]
+    [DisplayName("Execute NUnit Tests")]
+    [Description("Runs NUnit unit tests on a specified project, assembly, or NUnit file.")]
     [Tag(Tags.UnitTests)]
     [CustomEditor(typeof(NUnitActionEditor))]
     [RequiresInterface(typeof(IFileOperationsExecuter))]
+    [ConvertibleToOperation(typeof(NUnitActionImporter))]
     public sealed class NUnitAppAction : UnitTestActionBase
     {
-        public NUnitAppAction()
-        {
-            this.TreatInconclusiveAsFailure = true;
-        }
-
         /// <summary>
         /// Gets or sets the test runner exe path
         /// </summary>
@@ -34,12 +32,6 @@ namespace Inedo.BuildMasterExtensions.NUnit
         /// </summary>
         [Persistent]
         public string TestFile { get; set; }
-
-        /// <summary>
-        /// Gets or sets the .NET Framework version to run against.
-        /// </summary>
-        [Persistent]
-        public string FrameworkVersion { get; set; }
 
         /// <summary>
         /// Gets or sets the additional arguments.
@@ -57,11 +49,11 @@ namespace Inedo.BuildMasterExtensions.NUnit
         /// Gets or sets a value indicating whether to treat inconclusive tests as failures.
         /// </summary>
         [Persistent]
-        public bool TreatInconclusiveAsFailure { get; set; }
+        public bool TreatInconclusiveAsFailure { get; set; } = true;
 
-        public override ActionDescription GetActionDescription()
+        public override ExtendedRichDescription GetActionDescription()
         {
-            var longActionDescription = new LongActionDescription();
+            var longActionDescription = new RichDescription();
             if (!string.IsNullOrWhiteSpace(this.AdditionalArguments))
             {
                 longActionDescription.AppendContent(
@@ -70,8 +62,8 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 );
             }
 
-            return new ActionDescription(
-                new ShortActionDescription(
+            return new ExtendedRichDescription(
+                new RichDescription(
                     "Run NUnit on ",
                     new DirectoryHilite(this.OverriddenSourceDirectory, this.TestFile)
                 ),
@@ -147,13 +139,13 @@ namespace Inedo.BuildMasterExtensions.NUnit
         private string GetNUnitExePath(IFileOperationsExecuter fileOps)
         {
             if (!string.IsNullOrWhiteSpace(this.ExePath))
-                return fileOps.GetWorkingDirectory(this.Context.ApplicationId, this.Context.DeployableId ?? 0, this.ExePath);
+                return fileOps.CombinePath(this.Context.SourceDirectory, this.ExePath);
 
             var configurer = (NUnitConfigurer)this.GetExtensionConfigurer();
             if (string.IsNullOrWhiteSpace(configurer.NUnitConsoleExePath))
                 throw new InvalidOperationException("The path to NUnit was not specified in either the action or the selected NUnit extension's configuration.");
 
-            return fileOps.GetWorkingDirectory(this.Context.ApplicationId, this.Context.DeployableId ?? 0, configurer.NUnitConsoleExePath);
+            return fileOps.CombinePath(this.Context.SourceDirectory, configurer.NUnitConsoleExePath);
         }
 
         private string GetXmlOutputPath(IFileOperationsExecuter fileOps)

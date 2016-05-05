@@ -26,7 +26,7 @@
     <IsWebBootstrapper>true</IsWebBootstrapper>
     <StartupObject>
     </StartupObject>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <PublishUrl>http://localhost/NUnit/</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Web</InstallFrom>
@@ -52,6 +52,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -61,22 +62,27 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="BuildMaster.Web.Controls">
-      <HintPath>packages\Inedo.BuildMaster.SDK.4.7\lib\net40\BuildMaster.Web.Controls.dll</HintPath>
+    <Reference Include="BuildMaster.Web.Controls, Version=5.0.0.212, Culture=neutral, PublicKeyToken=112cfb71329714a6, processorArchitecture=MSIL">
+      <HintPath>packages\Inedo.BuildMaster.SDK.5.0\lib\net45\BuildMaster.Web.Controls.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
       <Private>False</Private>
     </Reference>
-    <Reference Include="BuildMasterCore">
-      <HintPath>packages\Inedo.BuildMaster.SDK.4.7\lib\net40\BuildMasterCore.dll</HintPath>
+    <Reference Include="BuildMasterCore, Version=5.0.0.212, Culture=neutral, PublicKeyToken=112cfb71329714a6, processorArchitecture=MSIL">
+      <HintPath>packages\Inedo.BuildMaster.SDK.5.0\lib\net45\BuildMasterCore.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
       <Private>False</Private>
     </Reference>
-    <Reference Include="ICSharpCode.SharpZipLib">
-      <HintPath>packages\SharpZipLib.0.86.0\lib\20\ICSharpCode.SharpZipLib.dll</HintPath>
+    <Reference Include="Inedo.ExecutionEngine, Version=30.1.0.0, Culture=neutral, PublicKeyToken=68703f0e52007e75, processorArchitecture=MSIL">
+      <HintPath>packages\Inedo.BuildMaster.SDK.5.0\lib\net45\Inedo.ExecutionEngine.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
       <Private>False</Private>
     </Reference>
-    <Reference Include="InedoLib">
-      <HintPath>packages\Inedo.BuildMaster.SDK.4.7\lib\net40\InedoLib.dll</HintPath>
+    <Reference Include="InedoLib, Version=380.1.0.0, Culture=neutral, PublicKeyToken=112cfb71329714a6, processorArchitecture=MSIL">
+      <HintPath>packages\Inedo.BuildMaster.SDK.5.0\lib\net45\InedoLib.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -89,8 +95,10 @@
     <Compile Include="NUnitActionEditor.cs">
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
+    <Compile Include="NUnitActionImporter.cs" />
     <Compile Include="NUnitAppAction.cs" />
     <Compile Include="NUnitConfigurer.cs" />
+    <Compile Include="NUnitOperation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

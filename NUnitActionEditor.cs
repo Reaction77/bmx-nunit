@@ -11,25 +11,20 @@ namespace Inedo.BuildMasterExtensions.NUnit
     internal sealed class NUnitActionEditor : ActionEditorBase
     {
         private SourceControlFileFolderPicker txtExePath;
-        private ValidatingTextBox txtTestFile, txtGroupName;
-        private DropDownList ddlFrameworkVersion;
+        private ValidatingTextBox txtTestFile;
+        private ValidatingTextBox txtGroupName;
         private ValidatingTextBox txtAdditionalArguments;
         private ValidatingTextBox txtCustomXmlOutputPath;
         private CheckBox chkTreatInconclusiveTestsAsFailure;
 
-        public override bool DisplaySourceDirectory
-        {
-            get { return true; }
-        }
+        public override bool DisplaySourceDirectory => true;
 
         protected override void CreateChildControls()
         {
             Tables.Deployables_Extended deployable = null;
             if (this.DeployableId > 0)
             {
-                deployable = StoredProcs.Applications_GetDeployable(this.DeployableId)
-                   .Execute()
-                   .FirstOrDefault();
+                deployable = DB.Applications_GetDeployable(this.DeployableId).FirstOrDefault();
             }
 
             this.txtExePath = new SourceControlFileFolderPicker
@@ -49,18 +44,6 @@ namespace Inedo.BuildMasterExtensions.NUnit
             {
                 Required = true
             };
-
-            this.ddlFrameworkVersion = new DropDownList
-            {
-                Items =
-                {
-                    new ListItem("2.0.50727", "2.0.50727"),
-                    new ListItem("4.0.30319", "4.0.30319"),
-                    new ListItem("default", string.Empty)
-                }
-            };
-
-            this.ddlFrameworkVersion.SelectedValue = string.Empty;
 
             this.txtAdditionalArguments = new ValidatingTextBox
             {
@@ -85,7 +68,6 @@ namespace Inedo.BuildMasterExtensions.NUnit
                     HelpText = "The path to (and including) nunit-console.exe if using a different version of NUnit than the one specified "
                              + "in the NUnit extension configuration."
                 },
-                new SlimFormField("CLR version:", this.ddlFrameworkVersion),
                 new SlimFormField("Test file:", this.txtTestFile)
                 {
                     HelpText = "This should normally be a .dll or project file."
@@ -103,7 +85,6 @@ namespace Inedo.BuildMasterExtensions.NUnit
             this.txtExePath.Text = nunitAction.ExePath;
             this.txtTestFile.Text = nunitAction.TestFile;
             this.txtGroupName.Text = nunitAction.GroupName;
-            this.ddlFrameworkVersion.SelectedValue = nunitAction.FrameworkVersion ?? "";
             this.txtAdditionalArguments.Text = nunitAction.AdditionalArguments;
             this.txtCustomXmlOutputPath.Text = nunitAction.CustomXmlOutputPath;
             this.chkTreatInconclusiveTestsAsFailure.Checked = nunitAction.TreatInconclusiveAsFailure;
@@ -116,7 +97,6 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 ExePath = this.txtExePath.Text,
                 TestFile = this.txtTestFile.Text,
                 GroupName = this.txtGroupName.Text,
-                FrameworkVersion = this.ddlFrameworkVersion.SelectedValue,
                 AdditionalArguments = this.txtAdditionalArguments.Text,
                 CustomXmlOutputPath = this.txtCustomXmlOutputPath.Text,
                 TreatInconclusiveAsFailure = this.chkTreatInconclusiveTestsAsFailure.Checked
