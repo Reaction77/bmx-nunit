@@ -4,10 +4,10 @@ using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Inedo.Agents;
 using Inedo.BuildMaster;
 using Inedo.BuildMaster.Data;
 using Inedo.BuildMaster.Extensibility;
-using Inedo.BuildMaster.Extensibility.Agents;
 using Inedo.BuildMaster.Extensibility.Operations;
 using Inedo.Diagnostics;
 using Inedo.Documentation;
@@ -87,7 +87,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
             {
                 await this.ExecuteCommandLineAsync(
                     context,
-                    new AgentProcessStartInfo
+                    new RemoteProcessStartInfo
                     {
                         FileName = exePath,
                         Arguments = args,
