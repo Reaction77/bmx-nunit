@@ -40,6 +40,13 @@ namespace Inedo.BuildMasterExtensions.NUnit
         [Description("The directory to generate the XML test results.")]
         public string CustomXmlOutputPath { get; set; }
 
+        [Category("Advanced")]
+        [ScriptAlias("Group")]
+        [DisplayName("Group name")]
+        [Description("When multiple sets of tests are performed, unique group names will categorize them in the UI.")]
+        [PlaceholderText("NUnit")]
+        public string GroupName { get; set; }
+
         public override async Task ExecuteAsync(IOperationExecutionContext context)
         {
             var fileOps = context.Agent.GetService<IFileOperationsExecuter>();
@@ -123,7 +130,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
 
                         db.BuildTestResults_RecordTestResult(
                             Execution_Id: context.ExecutionId,
-                            Group_Name: null,
+                            Group_Name: AH.NullIf(this.GroupName, string.Empty) ?? "NUnit",
                             Test_Name: testName,
                             TestStatus_Code: result,
                             TestResult_Text: testCaseElement.ToString(),
