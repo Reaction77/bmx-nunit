@@ -31,6 +31,10 @@ namespace Inedo.BuildMasterExtensions.NUnit
         [DisplayName("nunit path")]
         [Description("The path to the nunit test runner executable.")]
         public string ExePath { get; set; }
+        [ScriptAlias(nameof(IsNUnit3))]
+        [DisplayName("Is NUnit v3")]
+        [Description("When set to true, a different syntax will be used for command-line arguments.")]
+        public bool IsNUnit3 { get; set; }
         [ScriptAlias("Arguments")]
         [DisplayName("Additional arguments")]
         [Description("Raw command line arguments passed to the nunit test runner.")]
@@ -76,7 +80,10 @@ namespace Inedo.BuildMasterExtensions.NUnit
 
             this.LogDebug("Output file: " + outputFilePath);
 
-            var args = $"\"{testFilePath}\" /xml:\"{outputFilePath}\"";
+            var args = this.IsNUnit3 
+                ? $"\"{testFilePath}\" --result:nunit2 --result:\"{outputFilePath}\""
+                : $"\"{testFilePath}\" /xml:\"{outputFilePath}\"";
+            
             if (!string.IsNullOrEmpty(this.AdditionalArguments))
             {
                 this.LogDebug("Additional arguments: " + this.AdditionalArguments);
