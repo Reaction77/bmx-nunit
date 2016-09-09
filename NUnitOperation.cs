@@ -111,6 +111,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 var testResultsElement = xdoc.Element("test-results");
 
                 var startTime = this.TryParseStartTime((string)testResultsElement.Attribute("date"), (string)testResultsElement.Attribute("time")) ?? DateTime.UtcNow;
+                var failures = 0;
 
                 using (var db = new DB.Context())
                 {
@@ -130,6 +131,8 @@ namespace Inedo.BuildMasterExtensions.NUnit
                             .Case("Inconclusive", Domains.TestStatusCodes.Inconclusive)
                             .Default(Domains.TestStatusCodes.Failed)
                             .End();
+                        if (result == Domains.TestStatusCodes.Failed)
+                            failures++;
 
                         var testDuration = this.TryParseTestTime((string)testCaseElement.Attribute("time"));
 
@@ -148,6 +151,9 @@ namespace Inedo.BuildMasterExtensions.NUnit
                         startTime += testDuration;
                     }
                 }
+
+                if (failures > 0)
+                    this.LogError($"{0} test failures were reported.");
             }
             finally
             {
