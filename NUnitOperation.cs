@@ -11,6 +11,7 @@ using Inedo.BuildMaster.Extensibility;
 using Inedo.BuildMaster.Extensibility.Operations;
 using Inedo.Diagnostics;
 using Inedo.Documentation;
+using System.Collections.Generic;
 
 namespace Inedo.BuildMasterExtensions.NUnit
 {
@@ -72,18 +73,21 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 return;
             }
 
-            string outputFilePath;
+            string outputPath;
             if (string.IsNullOrEmpty(this.CustomXmlOutputPath))
-                outputFilePath = fileOps.CombinePath(context.WorkingDirectory, Guid.NewGuid().ToString("N") + ".xml");
+                outputPath = context.WorkingDirectory;
             else
-                outputFilePath = context.ResolvePath(this.CustomXmlOutputPath);
+                outputPath = context.ResolvePath(this.CustomXmlOutputPath);
 
-            this.LogDebug("Output file: " + outputFilePath);
+            this.LogDebug("Output directory: " + outputPath);
 
-            var args = this.IsNUnit3 
-                ? $"\"{testFilePath}\" --result:nunit2 --result:\"{outputFilePath}\""
-                : $"\"{testFilePath}\" /xml:\"{outputFilePath}\"";
-            
+            var testResultsXmlFile = fileOps.CombinePath(outputPath, "TestResult.xml");
+            this.LogDebug("Output file: " + testResultsXmlFile);
+
+            var args = this.IsNUnit3
+                ? $"\"{testFilePath}\" --work:\"{outputPath}\""
+                : $"\"{testFilePath}\" /xml:\"{outputPath}\"";
+
             if (!string.IsNullOrEmpty(this.AdditionalArguments))
             {
                 this.LogDebug("Additional arguments: " + this.AdditionalArguments);
@@ -92,6 +96,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
 
             try
             {
+                this.LogDebug("Run tests");
                 await this.ExecuteCommandLineAsync(
                     context,
                     new RemoteProcessStartInfo
@@ -102,15 +107,21 @@ namespace Inedo.BuildMasterExtensions.NUnit
                     }
                 );
 
+
+                this.LogDebug($"Read file: {testResultsXmlFile}");
                 XDocument xdoc;
-                using (var stream = fileOps.OpenFile(outputFilePath, FileMode.Open, FileAccess.Read))
+                using (var stream = fileOps.OpenFile(testResultsXmlFile, FileMode.Open, FileAccess.Read))
                 {
                     xdoc = XDocument.Load(stream);
+                    this.LogDebug("File read");
                 }
 
-                var testResultsElement = xdoc.Element("test-results");
+                this.LogDebug($"Parse results");
+                string resultsNodeName = this.IsNUnit3 ? "test-run" : "test-results";
 
-                var startTime = this.TryParseStartTime((string)testResultsElement.Attribute("date"), (string)testResultsElement.Attribute("time")) ?? DateTime.UtcNow;
+                var testResultsElement = xdoc.Element(resultsNodeName);
+
+                var startTime = this.TryParseStartTime(testResultsElement);
                 var failures = 0;
 
                 using (var db = new DB.Context())
@@ -120,17 +131,13 @@ namespace Inedo.BuildMasterExtensions.NUnit
                         var testName = (string)testCaseElement.Attribute("name");
 
                         // skip tests that weren't actually run
-                        if (string.Equals((string)testCaseElement.Attribute("executed"), "False", StringComparison.OrdinalIgnoreCase))
+                        if (TestCaseWasSkipped(testCaseElement))
                         {
                             this.LogInformation($"NUnit test: {testName} (skipped)");
                             continue;
                         }
 
-                        var result = AH.Switch<string, string>((string)testCaseElement.Attribute("success"), StringComparer.OrdinalIgnoreCase)
-                            .Case("True", Domains.TestStatusCodes.Passed)
-                            .Case("Inconclusive", Domains.TestStatusCodes.Inconclusive)
-                            .Default(Domains.TestStatusCodes.Failed)
-                            .End();
+                        var result = GetTestCaseResult(testCaseElement);
                         if (result == Domains.TestStatusCodes.Failed)
                             failures++;
 
@@ -143,7 +150,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
                             Group_Name: AH.NullIf(this.GroupName, string.Empty) ?? "NUnit",
                             Test_Name: testName,
                             TestStatus_Code: result,
-                            TestResult_Text: testCaseElement.ToString(),
+                            TestResult_Text: result == Domains.TestStatusCodes.Passed ? result : testCaseElement.ToString(),
                             TestStarted_Date: startTime,
                             TestEnded_Date: startTime + testDuration
                         );
@@ -159,14 +166,14 @@ namespace Inedo.BuildMasterExtensions.NUnit
             {
                 if (string.IsNullOrEmpty(this.CustomXmlOutputPath))
                 {
-                    this.LogDebug($"Deleting temp output file ({outputFilePath})...");
+                    this.LogDebug($"Deleting temp output file ({testResultsXmlFile})...");
                     try
                     {
-                        fileOps.DeleteFile(outputFilePath);
+                        fileOps.DeleteFile(testResultsXmlFile);
                     }
                     catch
                     {
-                        this.LogWarning($"Could not delete {outputFilePath}.");
+                        this.LogWarning($"Could not delete {testResultsXmlFile}.");
                     }
                 }
             }
@@ -192,8 +199,26 @@ namespace Inedo.BuildMasterExtensions.NUnit
             );
         }
 
-        private DateTime? TryParseStartTime(string date, string time)
+        private DateTime? TryParseStartTime(XElement rootNode)
         {
+            string date = null;
+            string time = null;
+            if (this.IsNUnit3)
+            {
+                string startTime = (string)rootNode.Attribute("start-time");
+                var startTimeParts = startTime?.Split(' ');
+                if (startTimeParts != null)
+                {
+                    date = startTimeParts[0];
+                    time = startTimeParts[1];
+                }
+            }
+            else
+            {
+                date = (string)rootNode.Attribute("date");
+                time = (string)rootNode.Attribute("time");
+            }
+
             try
             {
                 if (string.IsNullOrWhiteSpace(date))
@@ -223,7 +248,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
             }
 
             this.LogWarning("Unable to parse start time; using current time instead.");
-            return null;
+            return DateTime.UtcNow;
         }
         private TimeSpan TryParseTestTime(string time)
         {
@@ -243,6 +268,38 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 this.LogWarning($"Could not parse {time} as a time in seconds.");
 
             return TimeSpan.FromSeconds(doubleTime);
+        }
+
+        private bool TestCaseWasSkipped(XElement testCaseElement)
+        {
+            if (this.IsNUnit3)
+            {
+                return string.Equals((string)testCaseElement.Attribute("result"), "Skipped", StringComparison.OrdinalIgnoreCase);
+            }
+            else
+            {
+                return string.Equals((string)testCaseElement.Attribute("executed"), "False", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        private string GetTestCaseResult(XElement testCaseElement)
+        {
+            if (this.IsNUnit3)
+            {
+                return AH.Switch<string, string>((string)testCaseElement.Attribute("result"), StringComparer.OrdinalIgnoreCase)
+                                    .Case("Passed", Domains.TestStatusCodes.Passed)
+                                    .Case("Inconclusive", Domains.TestStatusCodes.Inconclusive)
+                                    .Default(Domains.TestStatusCodes.Failed)
+                                    .End();
+            }
+            else
+            {
+                return AH.Switch<string, string>((string)testCaseElement.Attribute("success"), StringComparer.OrdinalIgnoreCase)
+                                    .Case("True", Domains.TestStatusCodes.Passed)
+                                    .Case("Inconclusive", Domains.TestStatusCodes.Inconclusive)
+                                    .Default(Domains.TestStatusCodes.Failed)
+                                    .End();
+            }
         }
     }
 }
