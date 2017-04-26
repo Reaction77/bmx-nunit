@@ -12,6 +12,8 @@ using Inedo.BuildMaster.Extensibility.Operations;
 using Inedo.Diagnostics;
 using Inedo.Documentation;
 using System.Collections.Generic;
+using Inedo.BuildMasterExtensions.NUnit.Model;
+using System.Linq;
 
 namespace Inedo.BuildMasterExtensions.NUnit
 {
@@ -25,21 +27,35 @@ namespace Inedo.BuildMasterExtensions.NUnit
         [Required]
         [ScriptAlias("TestFile")]
         [DisplayName("Test file")]
-        [Description("The file nunit will test against (could be dll, proj, or config file based on test runner).")]
+        [Description("The file nunit will test against (could be dll, proj, nunit or any other file NUnit supports).")]
         public string TestFile { get; set; }
+
         [Required]
         [ScriptAlias("NUnitExePath")]
-        [DisplayName("nunit path")]
+        [DisplayName("NUnit path")]
         [Description("The path to the nunit test runner executable.")]
         public string ExePath { get; set; }
+
         [ScriptAlias("Arguments")]
         [DisplayName("Additional arguments")]
         [Description("Raw command line arguments passed to the nunit test runner.")]
         public string AdditionalArguments { get; set; }
+
+        [Required]
+        [ScriptAlias("DeleteOutput")]
+        [DisplayName("Delete output")]
+        [Description("Indicates if test result output should be preserved on disk.")]
+        public bool DeleteOutput { get; set; }
+
         [ScriptAlias("OutputDirectory")]
         [DisplayName("Output directory")]
         [Description("The directory to generate the XML test results.")]
-        public string CustomXmlOutputPath { get; set; }
+        public string OutputPath { get; set; }
+
+        [ScriptAlias("OutputResultsFileName")]
+        [DisplayName("Results output file name")]
+        [Description("Name of the results file (without file extension).")]
+        public string OutputName { get; set; }
 
         [Category("Advanced")]
         [ScriptAlias("Group")]
@@ -70,23 +86,26 @@ namespace Inedo.BuildMasterExtensions.NUnit
             }
 
             string outputPath;
-            if (string.IsNullOrEmpty(this.CustomXmlOutputPath))
+            if (String.IsNullOrEmpty(this.OutputPath))
                 outputPath = context.WorkingDirectory;
             else
-                outputPath = context.ResolvePath(this.CustomXmlOutputPath);
+                outputPath = context.ResolvePath(this.OutputPath);
 
             this.LogDebug("Output directory: " + outputPath);
 
-            var testResultsXmlFile = fileOps.CombinePath(outputPath, "TestResult.xml");
+            string outputFileName = "TestResult.xml";
+            if (!String.IsNullOrEmpty(this.OutputName))
+            {
+                outputFileName = this.OutputName + ".xml";
+            }
+
+            this.LogDebug("Output filename: " + outputFileName);
+
+            var testResultsXmlFile = fileOps.CombinePath(outputPath, outputFileName);
             this.LogDebug("Output file: " + testResultsXmlFile);
 
-            var args = $"\"{testFilePath}\" --work:\"{outputPath}\""; //--work=PATH
-
-            if (!String.IsNullOrEmpty(this.AdditionalArguments))
-            {
-                this.LogDebug("Additional arguments: " + this.AdditionalArguments);
-                args += " " + this.AdditionalArguments;
-            }
+            string args = GetCommandLineArguments(testFilePath, outputPath, this.AdditionalArguments);
+            this.LogDebug("Command line arguments: " + args);
 
             try
             {
@@ -102,13 +121,9 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 );
 
 
-                this.LogDebug($"Read file: {testResultsXmlFile}");
-                XDocument xdoc;
-                using (var stream = fileOps.OpenFile(testResultsXmlFile, FileMode.Open, FileAccess.Read))
-                {
-                    xdoc = XDocument.Load(stream);
-                    this.LogDebug("File read");
-                }
+                this.LogDebug("Read file: " + testResultsXmlFile);
+                XDocument xdoc = ReadTestResultsFile(fileOps, testResultsXmlFile);
+                Model.TestRun testRun = ParseTestResultXml(xdoc);
 
                 this.LogDebug($"Parse results");
                 string resultsNodeName = "test-run";
@@ -158,7 +173,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
             }
             finally
             {
-                if (string.IsNullOrEmpty(this.CustomXmlOutputPath))
+                if (string.IsNullOrEmpty(this.OutputPath))
                 {
                     this.LogDebug($"Deleting temp output file ({testResultsXmlFile})...");
                     try
@@ -171,6 +186,89 @@ namespace Inedo.BuildMasterExtensions.NUnit
                     }
                 }
             }
+        }
+
+        private TestRun ParseTestResultXml(XDocument xdoc)
+        {
+            return xdoc.Descendants("test-run").Select(e => ParseTestRunElement(e)).FirstOrDefault();
+        }
+
+        private TestRun ParseTestRunElement(XElement e)
+        {
+            var testRun = new TestRun()
+            {
+                id = Convert.ToInt32(e.Attribute("id").Value),
+                testcasecount = Convert.ToInt32(e.Attribute("testcasecount").Value),
+                result = e.Attribute("result").Value,
+                total = Convert.ToInt32(e.Attribute("total").Value),
+                passed = Convert.ToInt32(e.Attribute("passed").Value),
+                failed = Convert.ToInt32(e.Attribute("failed").Value),
+                inconclusive = Convert.ToInt32(e.Attribute("inconclusive").Value),
+                skipped = Convert.ToInt32(e.Attribute("skipped").Value),
+                asserts = Convert.ToInt32(e.Attribute("asserts").Value),
+                engineversion = e.Attribute("engine-version").Value,
+                clrversion = e.Attribute("clr-version").Value,
+                starttime = e.Attribute("start-time").Value,
+                endtime = e.Attribute("end-time").Value,
+                duration = Convert.ToDecimal(e.Attribute("duration").Value)
+            };
+
+            //TODO: refactor this check of XmlNodeType and Element name
+            var commandLineNode = e.DescendantNodes().FirstOrDefault(n => n.NodeType == System.Xml.XmlNodeType.Element && ((System.Xml.Linq.XElement)n).Name == "command-line");
+            testRun.commandline = ParseCommandLineNode(commandLineNode);
+
+            var testSuiteElement = e.Descendants("test-suite").FirstOrDefault();
+            testRun.testsuite = ParseTestSuiteElement(testSuiteElement);
+
+            return testRun;
+        }
+
+        private string ParseCommandLineNode(XNode commandLineNode)
+        {
+            return ((System.Xml.Linq.XElement)commandLineNode).Value;
+        }
+
+        private TestSuite ParseTestSuiteElement(XElement testSuiteElement)
+        {
+            var environmentElement = testSuiteElement.DescendantNodes().FirstOrDefault(n => n.NodeType == System.Xml.XmlNodeType.Element && ((System.Xml.Linq.XElement)n).Name == "enivronment");
+
+            //TODO: parse everything else
+
+        }
+
+
+        private XDocument ReadTestResultsFile(IFileOperationsExecuter fileOps, string testResultsXmlFile)
+        {
+            XDocument xdoc;
+            using (var stream = fileOps.OpenFile(testResultsXmlFile, FileMode.Open, FileAccess.Read))
+            {
+                xdoc = XDocument.Load(stream);
+                this.LogDebug("File read");
+            }
+            return xdoc;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="inputFilePath">The console program must always have an assembly or project specified. 
+        /// Assemblies are specified by file name or path, which may be absolute or relative. Relative paths are interpreted based on the current directory.
+        /// 
+        /// In addition to assemblies, you may specify any project type that is understood by NUnit. Out of the box, this includes various Visual Studio
+        /// project types as well as NUnit(.nunit) projects.</param>
+        /// <param name="outputPath">PATH of the directory to use for output files.</param>
+        /// <returns>Arguments ready to pass to the NUnit test runner</returns>
+        private string GetCommandLineArguments(string inputFilePath, string outputPath, string additionalArguments)
+        {
+            var args = $"\"{inputFilePath}\" --work:\"{outputPath}\"";
+
+            if (!String.IsNullOrEmpty(additionalArguments))
+            {
+                //this.LogDebug("Additional arguments: " + this.AdditionalArguments);
+                args += " " + this.AdditionalArguments;
+            }
+
+            return args;
         }
 
         protected override ExtendedRichDescription GetDescription(IOperationConfiguration config)

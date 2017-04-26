@@ -14,7 +14,7 @@ namespace Inedo.BuildMasterExtensions.NUnit
                 TestFile = context.ConvertLegacyExpression(PathEx.Combine(action.OverriddenSourceDirectory ?? string.Empty, action.TestFile)),
                 ExePath = context.ConvertLegacyExpression(PathEx.Combine(action.OverriddenSourceDirectory ?? string.Empty, AH.CoalesceString(action.ExePath, configurerPath))),
                 AdditionalArguments = AH.NullIf(context.ConvertLegacyExpression(action.AdditionalArguments), string.Empty),
-                CustomXmlOutputPath = AH.NullIf(context.ConvertLegacyExpression(PathEx.Combine(action.OverriddenSourceDirectory ?? string.Empty, action.CustomXmlOutputPath)), string.Empty)
+                OutputPath = AH.NullIf(context.ConvertLegacyExpression(PathEx.Combine(action.OverriddenSourceDirectory ?? string.Empty, action.CustomXmlOutputPath)), string.Empty)
             };
         }
     }

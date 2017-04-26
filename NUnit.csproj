@@ -97,6 +97,7 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Model\TestRun.cs" />
     <Compile Include="NUnitActionEditor.cs">
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
