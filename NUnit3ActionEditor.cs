@@ -86,7 +86,7 @@ namespace Inedo.BuildMasterExtensions.NUnit3
             this.txtTestFile.Text = nunitAction.TestFile;
             this.txtGroupName.Text = nunitAction.GroupName;
             this.txtAdditionalArguments.Text = nunitAction.AdditionalArguments;
-            this.txtCustomXmlOutputPath.Text = nunitAction.CustomXmlOutputPath;
+            this.txtCustomXmlOutputPath.Text = nunitAction.OutputPath;
             this.chkTreatInconclusiveTestsAsFailure.Checked = nunitAction.TreatInconclusiveAsFailure;
         }
 
@@ -98,7 +98,7 @@ namespace Inedo.BuildMasterExtensions.NUnit3
                 TestFile = this.txtTestFile.Text,
                 GroupName = this.txtGroupName.Text,
                 AdditionalArguments = this.txtAdditionalArguments.Text,
-                CustomXmlOutputPath = this.txtCustomXmlOutputPath.Text,
+                OutputPath = this.txtCustomXmlOutputPath.Text,
                 TreatInconclusiveAsFailure = this.chkTreatInconclusiveTestsAsFailure.Checked
             };
         }
