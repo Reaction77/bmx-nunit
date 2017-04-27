@@ -3,13 +3,13 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using Inedo.BuildMaster.Extensibility;
 
-[assembly: AssemblyTitle("NUnit")]
-[assembly: AssemblyDescription("Contains a unit testing action for NUnit-based tests.")]
+[assembly: AssemblyTitle("NUnit3")]
+[assembly: AssemblyDescription("Unit testing action for NUnit3 tests.")]
 
 [assembly: ComVisible(false)]
-[assembly: AssemblyCompany("Inedo, LLC")]
-[assembly: AssemblyProduct("BuildMaster")]
-[assembly: AssemblyCopyright("Copyright © 2008 - 2016")]
+[assembly: AssemblyCompany("Rockpool Digital")]
+[assembly: AssemblyProduct("")]
+[assembly: AssemblyCopyright("")]
 [assembly: AssemblyVersion("0.0.0.0")]
 [assembly: AssemblyFileVersion("0.0")]
 [assembly: CLSCompliant(false)]

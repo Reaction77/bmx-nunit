@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Inedo.BuildMasterExtensions.NUnit.Model
+namespace Inedo.BuildMasterExtensions.NUnit3.Model
 {
 
     /// <remarks/>
@@ -269,6 +269,19 @@ namespace Inedo.BuildMasterExtensions.NUnit.Model
             {
                 this.durationField = value;
             }
+        }
+    }
+
+    public partial class TestRun
+    {
+        public TestRun()
+        {
+            TestFixtures = new List<TestSuite>();
+        }
+
+        public List<TestSuite> TestFixtures
+        {
+            get; set;
         }
     }
 
